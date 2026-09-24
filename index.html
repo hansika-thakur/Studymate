@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyMate</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
+header{background:#172033;color:white;padding:22px 18px;border-radius:0 0 24px 24px}
+header h1{margin:0 0 6px;font-size:28px}header p{margin:0;opacity:.8}
+nav{display:flex;gap:8px;overflow:auto;padding:12px;background:white;position:sticky;top:0;z-index:2}
+nav button{border:0;background:#edf1f7;padding:10px 14px;border-radius:20px;white-space:nowrap}
+nav button.active{background:#172033;color:white}
+main{max-width:720px;margin:auto;padding:18px}
+.card{background:white;border-radius:18px;padding:18px;margin:12px 0;box-shadow:0 3px 14px #0000000d}
+h2{margin-top:4px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{padding:16px;border-radius:16px;background:#eef4ff}.stat b{font-size:26px;display:block}
+input,select{width:100%;padding:12px;border:1px solid #d8deea;border-radius:12px;margin:6px 0 12px;font-size:15px}
+button.primary{background:#172033;color:white;border:0;padding:12px 16px;border-radius:12px;font-weight:bold}
+button.delete{border:0;background:#ffe9e9;color:#a22;padding:8px 10px;border-radius:9px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #eee}
+.row:last-child{border-bottom:0}.done{text-decoration:line-through;opacity:.55}
+.progress{height:12px;background:#e7ebf2;border-radius:10px;overflow:hidden}.bar{height:100%;background:#172033;width:0}
+.small{font-size:13px;color:#687386}.empty{color:#7a8494;padding:10px 0}
+</style>
+</head>
+<body>
+<header><h1>StudyMate 📚</h1><p>Your simple personal study planner</p></header>
+<nav>
+<button class="active" onclick="show('home',this)">🏠 Home</button>
+<button onclick="show('subjects',this)">📚 Subjects</button>
+<button onclick="show('tasks',this)">✅ Tasks</button>
+<button onclick="show('progress',this)">📊 Progress</button>
+</nav>
+<main id="app"></main>
+<script>
+const key='studymate_v1';
+let data=JSON.parse(localStorage.getItem(key)||'{"subjects":[],"tasks":[]}');
+function save(){localStorage.setItem(key,JSON.stringify(data));}
+function show(page,btn){
+ document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active')); if(btn)btn.classList.add('active');
+ if(page==='home')home(); if(page==='subjects')subjects(); if(page==='tasks')tasks(); if(page==='progress')progress();
+}
+function home(){
+ const done=data.tasks.filter(t=>t.done).length,total=data.tasks.length;
+ app.innerHTML=`<div class="card"><h2>Welcome 👋</h2><p>Plan your study, finish tasks, and track your progress.</p>
+ <div class="grid"><div class="stat"><span>Subjects</span><b>${data.subjects.length}</b></div><div class="stat"><span>Tasks</span><b>${total}</b></div></div></div>
+ <div class="card"><h2>Today's progress</h2><div class="progress"><div class="bar" style="width:${total?done/total*100:0}%"></div></div><p class="small">${done} of ${total} tasks completed</p></div>`;
+}
+function subjects(){
+ app.innerHTML=`<div class="card"><h2>📚 My Subjects</h2><input id="sub" placeholder="e.g. History"><button class="primary" onclick="addSubject()">+ Add Subject</button></div>
+ <div class="card">${data.subjects.length?data.subjects.map((s,i)=>`<div class="row"><span>${esc(s)}</span><button class="delete" onclick="delSubject(${i})">Delete</button></div>`).join(''):'<div class="empty">No subjects yet. Add your first one!</div>'}</div>`;
+}
+function addSubject(){let v=sub.value.trim();if(!v)return;if(!data.subjects.includes(v))data.subjects.push(v);save();subjects();}
+function delSubject(i){data.subjects.splice(i,1);save();subjects();}
+function tasks(){
+ const opts=data.subjects.map(s=>`<option>${esc(s)}</option>`).join('');
+ app.innerHTML=`<div class="card"><h2>✅ Add Task</h2>
+ <input id="task" placeholder="e.g. Study Chapter 2">
+ <select id="subject">${opts||'<option>Add a subject first</option>'}</select>
+ <input id="date" type="date"><button class="primary" onclick="addTask()">+ Add Task</button></div>
+ <div class="card"><h2>My Tasks</h2>${data.tasks.length?data.tasks.map((t,i)=>`<div class="row"><div><label><input style="width:auto;margin:0 8px 0 0" type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${i})"><span class="${t.done?'done':''}">${esc(t.name)}</span></label><div class="small">${esc(t.subject)} ${t.date?'• '+t.date:''}</div></div><button class="delete" onclick="delTask(${i})">Delete</button></div>`).join(''):'<div class="empty">No tasks yet.</div>'}</div>`;
+}
+function addTask(){let n=task.value.trim();if(!n)return;data.tasks.push({name:n,subject:subject.value,date:date.value,done:false});save();tasks();}
+function toggleTask(i){data.tasks[i].done=!data.tasks[i].done;save();tasks();}
+function delTask(i){data.tasks.splice(i,1);save();tasks();}
+function progress(){
+ const total=data.tasks.length,done=data.tasks.filter(t=>t.done).length,pct=total?Math.round(done/total*100):0;
+ app.innerHTML=`<div class="card"><h2>📊 Progress</h2><p><b>${pct}%</b> complete</p><div class="progress"><div class="bar" style="width:${pct}%"></div></div><p class="small">${done} completed • ${total-done} remaining</p></div>
+ <div class="card"><h2>Keep going 💪</h2><p>Small study sessions add up. Complete one task at a time.</p></div>`;
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+home();
+</script>
+</body>
+</html>
